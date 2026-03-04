@@ -64,28 +64,29 @@ async function startBot() {
         const { commands, aliases } = loadCommands()
 
         const sock = makeWASocket({
-            printQRInTerminal: false,
+            printQRInTerminal: true,
             auth: state,
             version,
-            getMessage: key => messageStore.get(key.id)
+            getMessage: key => messageStore.get(key.id),
+            shouldSyncHistoryMessage: () => false
         })
-        if (!sock.authState.creds.registered) {
-            const number = ''
-            const code = await sock.requestPairingCode(number)
-            console.log(code)
-        }
+        
         // Gestion des événements
-        sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+        sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
+            if (qr) {
+                console.log('📱 Scanne ce QR code avec ton téléphone:')
+            }
+            
             if (connection === 'close') {
                 const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
-                console.log(shouldReconnect ? '🔄 Reconnexion...' : '🚫 Session expirée')
+                console.log(shouldReconnect ? '🔄 Reconnexion dans 3s...' : '🚫 Session expirée')
                 if (shouldReconnect) setTimeout(startBot, 3000)
             } else if (connection === 'open') {
-                console.log('✅ Connecté avec succès')
+                console.log('✅ Connecté avec succès!')
                 // Envoi de notification à l'admin
                 if (OWNER_NUMBER) {
-                    sock.sendMessage(OWNER_NUMBER, { text: '🤖 Bot connecté' })
-                        .catch(e => console.error('Notification admin:', e.message))
+                    sock.sendMessage(OWNER_NUMBER, { text: '🤖 Bot Arise-MD connecté et prêt' })
+                        .catch(e => console.log('Notification admin:', e.message))
                 }
             }
         })
